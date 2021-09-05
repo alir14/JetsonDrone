@@ -13,6 +13,12 @@ project(droneProject)
 find_package(jetson-utils)
 find_package(jetson-inference)
 
+#OPEN CV
+find_package(OpenCV REQUIRED)
+
+include_directories(${OpenCV_INCLUDE_DIR})
+include_directories(${OpenCV_LIBS})
+
 # CUDA and Qt4 are required
 find_package(CUDA)
 find_package(Qt4)
@@ -25,4 +31,4 @@ add_definitions(${QT_DEFINITIONS})
 cuda_add_executable(${PROJECT_NAME} ${droneprojectSrc})
 
 # link my-recognition to jetson-inference library
-target_link_libraries(${PROJECT_NAME} jetson-inference)
+target_link_libraries(${PROJECT_NAME} jetson-inference ${OpenCV_LIBS})

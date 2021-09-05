@@ -4,6 +4,9 @@
 #include <jetson-utils/videoOutput.h>
 #include <signal.h>
 
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+
 #ifdef HEADLESS
 	#define IS_HEADLESS() "headless"	// run without display
 #else
@@ -11,7 +14,7 @@
 #endif
 
 //floats
-float currentX, currentY , nextX, nextY;
+float currentX, currentY , previousX, previousY;
 
 bool signal_received = false;
 
@@ -31,6 +34,9 @@ void sig_handler(int signo)
 
 int main(int argc, char** argv)
 {
+    const cv::Scalar SCALAR_RED = cv::Scalar(0.0, 0.0, 255.0);
+    const cv::Scalar SCALAR_GREEN = cv::Scalar(0.0, 255.0,0.0);
+    const cv::Scalar SCALAR_BLUE = cv::Scalar(255.0, 0.0, 0.0);
 
     commandLine cmdLine(argc, argv, IS_HEADLESS());
 
@@ -70,7 +76,7 @@ int main(int argc, char** argv)
     while(!signal_received)
     {
         uchar3* img = NULL;
-      
+
         if(!input->Capture(&img, 1000))
         {
             if(!input->IsStreaming())
@@ -82,6 +88,8 @@ int main(int argc, char** argv)
             continue;
         }
 
+        cv::Mat trackingFrame(input->GetHeight(), input->GetWidth(), CV_8UC3, cv::Scalar(0));
+        
         detectNet::Detection* detections = NULL;
 
         const int numDetections = net->Detect(img, input->GetWidth(), input->GetHeight(), &detections, overlayFlags);
@@ -96,25 +104,26 @@ int main(int argc, char** argv)
                 //LogVerbose("bounding box %i  (%f, %f)  (%f, %f)  w=%f  h=%f\n", n, detections[n].Left, detections[n].Top, detections[n].Right, detections[n].Bottom, detections[n].Width(), detections[n].Height());
             //}
             
-            detections[0].Center(&nextX, &nextY);
+            detections[0].Center(&currentX, &currentY);
 
-            float distanceX = (nextX - currentX);
-            float distanceY = (nextY - currentY);
+            cv::circle(trackingFrame, cv::Point(currentX,currentY), 5, SCALAR_RED, -1);
 
-            currentX = nextX;
-            currentY = nextY;
+            float distanceX = (currentX - previousX);
+            float distanceY = (currentY - previousY);
+
+            previousX = currentX;
+            previousY = currentY;
 
             LogVerbose("currentX: %f , currentY: %f \n", currentX, currentY);
-            LogVerbose("nextX: %f , nextY: %f \n", nextX, nextY);
+            LogVerbose("previousX: %f , previousY: %f \n", previousX, previousY);
 
             LogVerbose(" moved X %f, moved Y %f \n", distanceX, distanceY);
-
-//            detections[n].Left
-//            detections[n].Top, 
-//            detections[n].Right, 
-//            detections[n].Bottom, 
-//            detections[n].Width(), 
-//            detections[n].Height()
+            
+            cv::imshow("trackingFrame", trackingFrame);
+            
+//            detections[n].Left |  detections[n].Top, | detections[n].Right, 
+//            detections[n].Bottom, |  detections[n].Width(), | detections[n].Height()
+//
         }
 
         if (output != NULL)
@@ -134,6 +143,9 @@ int main(int argc, char** argv)
         }
 
         // net->PrintProfilerTime();
+
+        if (cv::waitKey(5) >= 0) break;
+
     }
 
     LogVerbose("detectnet:  shutting down...\n");
