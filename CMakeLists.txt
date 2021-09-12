@@ -30,5 +30,7 @@ add_definitions(${QT_DEFINITIONS})
 # compile the my-recognition program
 cuda_add_executable(${PROJECT_NAME} ${droneprojectSrc})
 
+add_subdirectory(udp)
+
 # link my-recognition to jetson-inference library
-target_link_libraries(${PROJECT_NAME} jetson-inference ${OpenCV_LIBS})
+target_link_libraries(${PROJECT_NAME} jetson-inference ${OpenCV_LIBS} udpMessagePublisher)
