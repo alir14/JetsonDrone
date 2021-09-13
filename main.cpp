@@ -4,6 +4,7 @@
 #include <signal.h>
 
 #include "udp/udpMessagePublisher.h"
+#include <cmath>
 
 #ifdef HEADLESS
 	#define IS_HEADLESS() "headless"	// run without display
@@ -24,7 +25,8 @@ void sig_handler(int signo)
 
 int main(int argc, char** argv)
 {
-    float currX, currY, prevX, prevY;
+    float currX, currY, prevX=0, prevY=0, prevArea=0;
+    bool shouldSend = false;
 
     commandLine cmdLine(argc, argv, IS_HEADLESS());
 
@@ -90,28 +92,47 @@ int main(int argc, char** argv)
         {
             LogVerbose("%i objects detected \n", numDetections);
 
-            for(int n=0; n< numDetections; n++)
-            {
-                detections[n].Center(&currX, &currY);
+            //for(int n=0; n< numDetections; n++)
+            //{
+                detections[0].Center(&currX, &currY);
                 float distanceX = (currX - prevX);
                 float distanceY = (currY - prevY);
-                if(distanceX > 5 || distanceY > 5)
+                float areaScale = detections[0].Area() - prevArea;
+
+                if(std::abs(distanceX) > 30)
                 {
                     prevX = currX;
-                    prevY = currY;
-                    std::string centerCordnate = std::to_string(currX) +"," + std::to_string(currY);
-                    std::string boxCorrdinate = std::to_string(detections[n].Top)+","+std::to_string(detections[n].Left)+","+std::to_string(detections[n].Right)+","+std::to_string(detections[n].Bottom);
-                    std::string cmdName = net->GetClassDesc(detections[n].ClassID);
-
-                    _udpClient.PublishMessage(centerCordnate+"|" +boxCorrdinate+"|"+cmdName);
-                    break;
+                    shouldSend = true;
                 }
-                //LogVerbose("detected obj %i  class #%u (%s)  confidence=%f\n", n, detections[n].ClassID, 
-                //net->GetClassDesc(detections[n].ClassID), detections[n].Confidence);
-                //LogVerbose("bounding box %i  (%f, %f)  (%f, %f)  w=%f  h=%f\n", n, detections[n].Left, 
-                //detections[n].Top, detections[n].Right, detections[n].Bottom, detections[n].Width(), 
-                //detections[n].Height());
-            }
+
+                if(std::abs(distanceY) > 30)
+                {
+                     prevY = currY;
+                     shouldSend = true;
+                }
+
+                if(std::abs(areaScale) > 30000)
+                {
+                    LogVerbose(" a= %f | pA = %f \n",detections[0].Area(), prevArea);
+
+                    prevArea = detections[0].Area();
+                    shouldSend = true;
+                }
+
+                if(shouldSend)
+                {
+                    //LogVerbose(" dX = %f | dY = %f | a= %f | pA = %f \n", distanceX, distanceY, detections[0].Area(), prevArea);
+
+                    std::string centerCordnate = std::to_string(currX) +"," + std::to_string(currY);
+                    std::string boxCorrdinate = std::to_string(detections[0].Top)+","+std::to_string(detections[0].Left)+","+std::to_string(detections[0].Right)+","+std::to_string(detections[0].Bottom);
+                    std::string cmdName = net->GetClassDesc(detections[0].ClassID);
+
+                    _udpClient.PublishMessage(centerCordnate+"|" +boxCorrdinate+"|"+cmdName+"|"+std::to_string(areaScale));
+
+                    shouldSend = false;
+                }
+
+            //}
         }
 
         if (output != NULL)
