@@ -92,47 +92,50 @@ int main(int argc, char** argv)
         {
             LogVerbose("%i objects detected \n", numDetections);
 
-            //for(int n=0; n< numDetections; n++)
-            //{
-                detections[0].Center(&currX, &currY);
-                float distanceX = (currX - prevX);
-                float distanceY = (currY - prevY);
-                float areaScale = detections[0].Area() - prevArea;
+            int highConfIndex = 0;
 
-                if(std::abs(distanceX) > 30)
-                {
-                    prevX = currX;
-                    shouldSend = true;
-                }
+            for(int n=0; n< numDetections; n++)
+            {
+                if(detections[n].Confidence > detections[highConfIndex].Confidence)
+                    highConfIndex = n;
+            }
 
-                if(std::abs(distanceY) > 30)
-                {
-                     prevY = currY;
-                     shouldSend = true;
-                }
+            LogVerbose(" highest index %i and hisghers conf %f \n", highConfIndex,detections[highConfIndex].Confidence);
 
-                if(std::abs(areaScale) > 30000)
-                {
-                    LogVerbose(" a= %f | pA = %f \n",detections[0].Area(), prevArea);
+            detections[highConfIndex].Center(&currX, &currY);
+            float distanceX = (currX - prevX);
+            float distanceY = (currY - prevY);
+            int areaScale = (int)(detections[highConfIndex].Area() - prevArea);
 
-                    prevArea = detections[0].Area();
-                    shouldSend = true;
-                }
+            if(std::abs(distanceX) > 30)
+            {
+                prevX = currX;
+                shouldSend = true;
+            }
 
-                if(shouldSend)
-                {
-                    //LogVerbose(" dX = %f | dY = %f | a= %f | pA = %f \n", distanceX, distanceY, detections[0].Area(), prevArea);
+            if(std::abs(distanceY) > 30)
+            {
+                prevY = currY;
+                shouldSend = true;
+            }
 
-                    std::string centerCordnate = std::to_string(currX) +"," + std::to_string(currY);
-                    std::string boxCorrdinate = std::to_string(detections[0].Top)+","+std::to_string(detections[0].Left)+","+std::to_string(detections[0].Right)+","+std::to_string(detections[0].Bottom);
-                    std::string cmdName = net->GetClassDesc(detections[0].ClassID);
+            if(std::abs(areaScale) > 30000)
+            {
+                LogVerbose(" a= %f | pA = %f \n",detections[highConfIndex].Area(), prevArea);
+                prevArea = detections[highConfIndex].Area();
+                shouldSend = true;
+            }
 
-                    _udpClient.PublishMessage(centerCordnate+"|" +boxCorrdinate+"|"+cmdName+"|"+std::to_string(areaScale));
+            if(shouldSend)
+            {
+                std::string centerCordnate = std::to_string((int)currX) +"," + std::to_string((int)currY);
+                std::string boxCorrdinate = std::to_string((int)detections[highConfIndex].Left)+","+std::to_string((int)detections[highConfIndex].Top)+","+std::to_string((int)detections[highConfIndex].Right)+","+std::to_string((int)detections[highConfIndex].Bottom);
+                std::string cmdName = net->GetClassDesc(detections[highConfIndex].ClassID);
 
-                    shouldSend = false;
-                }
+                _udpClient.PublishMessage(centerCordnate+"|" +boxCorrdinate+"|"+std::to_string(areaScale)+"|"+cmdName);
 
-            //}
+                shouldSend = false;
+            }
         }
 
         if (output != NULL)
