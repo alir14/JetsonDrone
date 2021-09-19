@@ -103,8 +103,8 @@ int main(int argc, char** argv)
             LogVerbose(" highest index %i and hisghers conf %f \n", highConfIndex,detections[highConfIndex].Confidence);
 
             detections[highConfIndex].Center(&currX, &currY);
-            float distanceX = (currX - prevX);
-            float distanceY = (currY - prevY);
+            int distanceX = (currX - prevX);
+            int distanceY = (currY - prevY);
             int areaScale = (int)(detections[highConfIndex].Area() - prevArea);
 
             if(std::abs(distanceX) > 30)
@@ -128,11 +128,12 @@ int main(int argc, char** argv)
 
             if(shouldSend)
             {
+                std::string distanceCordinate = std::to_string(distanceX) +","+std::to_string(distanceY);
                 std::string centerCordnate = std::to_string((int)currX) +"," + std::to_string((int)currY);
                 std::string boxCorrdinate = std::to_string((int)detections[highConfIndex].Left)+","+std::to_string((int)detections[highConfIndex].Top)+","+std::to_string((int)detections[highConfIndex].Right)+","+std::to_string((int)detections[highConfIndex].Bottom);
                 std::string cmdName = net->GetClassDesc(detections[highConfIndex].ClassID);
 
-                _udpClient.PublishMessage(centerCordnate+"|" +boxCorrdinate+"|"+std::to_string(areaScale)+"|"+cmdName);
+                _udpClient.PublishMessage(distanceCordinate+"|" +centerCordnate+"|" +boxCorrdinate+"|"+std::to_string(areaScale)+"|"+cmdName);
 
                 shouldSend = false;
             }
